@@ -1,0 +1,141 @@
+# Default values for ui-framework.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: devjhbankingcontainerregistry1.azurecr.io/weatherforecast-ui
+  pullPolicy: IfNotPresent
+  tags: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+certificate:
+  keyVault:
+    enabled: false
+    vaultName: dev-jhbanking-kv2
+    certificateName: cert-wafv2-dev-jhbanking54adfea4f1af4dcf8e67b5acfe7d0c4fv2
+  dnsName: dev.uid.jhabu.com
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  protocol: TCP
+
+gateway:
+  create: false
+  hosts:
+  - dev.uid.jhabu.com
+
+virtualService:
+  create: true
+  gateways:
+  - shell-ui
+  hosts:
+  - dev.uid.jhabu.com
+  http:
+  - match:
+    - uri:
+        prefix: /ui/weatherforecast
+    route:
+    - destination:
+        host: weatherforecast-ui
+        port:
+          number: 80
+
+probes:
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+    httpGet:
+      path: "/ui/weatherforecast"
+      port: 80
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+    httpGet:
+      path: "/ui/weatherforecast"
+      port: 80
+
+destinationRules:
+  connectionPool:
+    tcp:
+      maxConnections: 262144
+      connectTimeout: 10m
+    http:
+      http1MaxPendingRequests: 262144
+      http2MaxRequests: 262144
+      maxRequestsPerConnection: 0
+      maxRetries: 262144
+  outlierDetection:
+    consecutiveGatewayErrors: 0
+    consecutive5xxErrors: 0
+    interval: 10s
+    baseEjectionTime: 30s
+    maxEjectionPercent: 10
+
+canary:
+  enabled: false
+  # the maximum time in seconds for the canary deployment
+  # to make progress before it is rollback (default 600s)
+  progressDeadlineSeconds: 60
+  # Istio traffic policy tls can be DISABLE or ISTIO_MUTUAL
+  istioTLS: ISTIO_MUTUAL
+  analysis:
+    # schedule interval (default 60s)
+    interval: 15s
+    # max number of failed metric checks before rollback
+    threshold: 10
+    # max traffic percentage routed to canary
+    # percentage (0-100)
+    maxWeight: 50
+    # canary increment step
+    # percentage (0-100)
+    stepWeight: 10
+  thresholds:
+    # minimum req success rate (non 5xx responses)
+    # percentage (0-100)
+    successRate: 99
+    # maximum req duration P99
+    # milliseconds
+    latency: 500
+  acceptanceTest:
+    enabled: true
+    timeout: 30s
+  loadTest:
+    enabled: true
+    timeout: 10s
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpu: 80
+  memory: 512Mi
+
+resources:
+  limits:
+    cpu: 2
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations: []
+
+affinity: {}
